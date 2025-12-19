@@ -8,6 +8,8 @@ Provides:
 """
 
 from .diff_service import KBDiffService, get_diff_service
+from .search import KBSearchEngine, get_search_engine
+from .context import LLMContextBuilder, get_context_builder
 from .types import (
     FAQItem,
     ArrangementItem,
@@ -29,12 +31,21 @@ from .constants import (
     ARRANGEMENT_KEYWORDS,
     OPENING_HOURS_KEYWORDS,
     GENERAL_KEYWORDS,
+    LOCATION_KEYWORDS,
+    MENU_KEYWORDS,
+    DAY_NAMES_EN_TO_NL,
+    DAYS_ORDER,
+    IMPORTANT_SEARCH_TERMS,
 )
 
 __all__ = [
     # Services
     "KBDiffService",
     "get_diff_service",
+    "KBSearchEngine",
+    "get_search_engine",
+    "LLMContextBuilder",
+    "get_context_builder",
     # Types
     "FAQItem",
     "ArrangementItem",
@@ -55,4 +66,9 @@ __all__ = [
     "ARRANGEMENT_KEYWORDS",
     "OPENING_HOURS_KEYWORDS",
     "GENERAL_KEYWORDS",
+    "LOCATION_KEYWORDS",
+    "MENU_KEYWORDS",
+    "DAY_NAMES_EN_TO_NL",
+    "DAYS_ORDER",
+    "IMPORTANT_SEARCH_TERMS",
 ]
