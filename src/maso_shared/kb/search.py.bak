@@ -35,9 +35,6 @@ from .constants import (
     DRINK_CONTENT_PATTERNS,
     ALLERGY_QUERY_KEYWORDS,
     ALLERGY_CONTENT_KEYWORDS,
-    # Excerpt helper constants
-    STOPWORDS_EXTENDED,
-    EXCERPT_SYNONYMS,
 )
 
 logger = logging.getLogger(__name__)
@@ -500,104 +497,64 @@ class KBSearchEngine:
         self,
         content: str,
         search_query: str,
-        context_chars: int = 1000,
-        before_chars: int = 300
+        context_chars: int = 500,
+        before_chars: int = 200
     ) -> str:
         """
         Extract relevant excerpt from content around search terms.
-        
-        Enhanced with Dutch word stem handling and synonym expansion:
-        - biertje -> bier
-        - wijntje -> wijn
-        - drankje -> drank
         
         Args:
             content: Full content text
             search_query: Query to find relevant section
             context_chars: Characters to include after match
             before_chars: Characters to include before match
-
+            
         Returns:
             Relevant excerpt with ellipsis
         """
         content_lower = content.lower()
-        query_lower = search_query.lower()
         
-        # Build expanded search terms with stems and synonyms (EXCLUDING stopwords)
-        search_terms = []
-        for word in query_lower.split():
-            if len(word) > 2 and word not in STOPWORDS_EXTENDED:
-                search_terms.append(word)
-                # Add Dutch word stems (remove common diminutive suffixes)
-                if word.endswith('tje'):
-                    search_terms.append(word[:-3])  # biertje -> bier
-                elif word.endswith('je'):
-                    search_terms.append(word[:-2])  # wijntje -> wijn
-                elif word.endswith('tjes'):
-                    search_terms.append(word[:-4])  # biertjes -> bier
-                elif word.endswith('jes'):
-                    search_terms.append(word[:-3])  # wijntjes -> wijn
-        
-        # Add synonyms for common drink/food terms
-        expanded_terms = list(search_terms)
-        for term in search_terms:
-            if term in EXCERPT_SYNONYMS:
-                expanded_terms.extend(EXCERPT_SYNONYMS[term])
-        
-        # Remove duplicates while preserving order
-        seen = set()
-        unique_terms = []
-        for t in expanded_terms:
-            if t not in seen:
-                seen.add(t)
-                unique_terms.append(t)
-        
-        # Find best match position using expanded terms
+        # Find best match position
         best_pos = -1
         best_score = 0
         
-        for word in unique_terms:
-            pos = content_lower.find(word)
-            if pos >= 0:
-                # Score based on word importance and position
-                score = len(word) * 2  # Longer words = better match
-                # Bonus for original query terms (not synonyms)
-                if word in search_terms:
-                    score += 5
-                # Extra bonus for longer, more specific terms
-                if len(word) >= 6:
-                    score += 3
-                if score > best_score:
-                    best_score = score
-                    best_pos = pos
-
+        for word in search_query.split():
+            if len(word) > 2:
+                pos = content_lower.find(word)
+                if pos >= 0:
+                    score = len(word)
+                    if pos < len(content) / 3:  # Earlier in content
+                        score += 2
+                    if score > best_score:
+                        best_score = score
+                        best_pos = pos
+        
         if best_pos < 0:
             return content[:context_chars] + "..."
-
+        
         # Extract context around match
         start = max(0, best_pos - before_chars)
         end = min(len(content), best_pos + context_chars)
-
+        
         # Expand to sentence boundaries
         while start > 0 and content[start] not in '.!?\n':
             start -= 1
             if best_pos - start > before_chars + 100:
                 break
-
+        
         while end < len(content) and content[end] not in '.!?\n':
             end += 1
             if end - best_pos > context_chars + 100:
                 break
-
+        
         excerpt = content[start:end].strip()
-
+        
         if start > 0:
             excerpt = "..." + excerpt
         if end < len(content):
             excerpt = excerpt + "..."
-
+        
         return excerpt
-
 
 
 # ============================================================================
