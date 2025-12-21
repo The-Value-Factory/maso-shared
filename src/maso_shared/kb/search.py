@@ -614,3 +614,35 @@ def get_search_engine() -> KBSearchEngine:
     if _search_engine_instance is None:
         _search_engine_instance = KBSearchEngine()
     return _search_engine_instance
+
+
+def extract_relevant_excerpt(
+    content: str,
+    query: str,
+    max_length: int = 800,
+    context_chars: int = 400,
+    before_chars: int = 100,
+) -> str:
+    """
+    Standalone function to extract relevant excerpt from content.
+    
+    This is a convenience wrapper around the KBSearchEngine method.
+    
+    Args:
+        content: Full content text
+        query: Search query  
+        max_length: Maximum excerpt length (default 800)
+        context_chars: Characters to include after match
+        before_chars: Characters to include before match
+        
+    Returns:
+        Relevant excerpt from content
+    """
+    engine = get_search_engine()
+    return engine.extract_relevant_excerpt(
+        content=content,
+        query=query,
+        max_length=max_length,
+        context_chars=context_chars,
+        before_chars=before_chars,
+    )
