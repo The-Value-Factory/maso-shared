@@ -57,6 +57,7 @@ class KBSearchEngine:
     
     def __init__(
         self,
+        kb_content: KBContent = None,
         stopwords: Set[str] = None,
         synonyms: Dict[str, List[str]] = None,
         query_expansions: Dict[str, List[str]] = None
@@ -69,52 +70,58 @@ class KBSearchEngine:
             synonyms: Custom synonym map (defaults to SYNONYM_MAP)
             query_expansions: Custom query expansions (defaults to QUERY_EXPANSIONS)
         """
+        self.kb_content = kb_content or {}
         self.stopwords = stopwords or STOPWORDS
         self.synonyms = synonyms or SYNONYM_MAP
         self.query_expansions = query_expansions or QUERY_EXPANSIONS
     
     def search(
         self,
-        kb_content: KBContent,
         query: str,
-        max_sections: int = 5
+        max_results: int = 5,
+        min_score: float = 0.0
     ) -> List[SearchResult]:
         """
         Search knowledge base content for relevant results.
-        
+
         Args:
-            kb_content: Knowledge base content dict
             query: User's search query
-            max_sections: Maximum number of results to return
-            
+            max_results: Maximum number of results to return
+            min_score: Minimum score threshold (optional)
+
         Returns:
             List of SearchResult dicts sorted by relevance score
         """
-        if not kb_content:
-            logger.warning("⚠️ Empty knowledge base content provided")
+        if not self.kb_content:
+            logger.warning("⚠️ Empty knowledge base content")
             return []
-        
+
         query_lower = query.lower()
-        
+
         # Detect query types for boosting
         signals = self.analyze_query_signals(query_lower)
-        
+
         is_arrangement_query = signals.get('arrangement', False)
         is_menu_query = any(keyword in query_lower for keyword in MENU_KEYWORDS)
-        
+
         if is_arrangement_query:
             logger.info("🎯 Arrangement query detected - boosting arrangement pages")
         if is_menu_query:
             logger.info("🍕 Menu query detected - boosting menu content")
-        
-        return self._search(
-            kb_content, 
-            query, 
-            max_sections, 
-            is_arrangement_query, 
+
+        results = self._search(
+            self.kb_content,
+            query,
+            max_results,
+            is_arrangement_query,
             is_menu_query
         )
-    
+
+        # Filter by min_score if specified
+        if min_score > 0:
+            results = [r for r in results if r.get('score', 0) >= min_score]
+
+        return results
     def _search(
         self,
         kb_content: KBContent,
