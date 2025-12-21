@@ -22,19 +22,41 @@ from .types import (
     DiffSummary,
 )
 from .constants import (
+    # Stopwords
     STOPWORDS,
+    STOPWORDS_EXTENDED,
+    # Synonym maps
     SYNONYM_MAP,
+    EXCERPT_SYNONYMS,
     QUERY_EXPANSIONS,
-    KIDS_KEYWORDS,
-    BEDRIJF_KEYWORDS,
-    PRICING_KEYWORDS,
-    ARRANGEMENT_KEYWORDS,
+    # Signal detection keywords
+    KIDS_QUERY_KEYWORDS,
+    KIDS_CONTENT_KEYWORDS,
+    KIDS_KEYWORDS,  # Backward compat
+    BEDRIJF_QUERY_KEYWORDS,
+    BEDRIJF_CONTENT_KEYWORDS,
+    BEDRIJF_KEYWORDS,  # Backward compat
+    PRICING_QUERY_KEYWORDS,
+    PRICING_CONTENT_KEYWORDS,
+    PRICING_KEYWORDS,  # Backward compat
+    # Drink keywords
+    DRINK_KEYWORDS,
+    ALL_DRINK_KEYWORDS,
+    DRINK_CONTENT_PATTERNS,
+    # Allergy keywords
+    ALLERGY_QUERY_KEYWORDS,
+    ALLERGY_CONTENT_KEYWORDS,
+    # Other signal keywords
+    RESERVATION_QUERY_KEYWORDS,
     OPENING_HOURS_KEYWORDS,
-    GENERAL_KEYWORDS,
     LOCATION_KEYWORDS,
+    ARRANGEMENT_KEYWORDS,
+    GENERAL_KEYWORDS,
     MENU_KEYWORDS,
+    # Date/day constants
     DAY_NAMES_EN_TO_NL,
     DAYS_ORDER,
+    # Search relevance
     IMPORTANT_SEARCH_TERMS,
 )
 
@@ -56,19 +78,40 @@ __all__ = [
     "QuerySignals",
     "DiffChange",
     "DiffSummary",
-    # Constants
+    # Stopwords
     "STOPWORDS",
+    "STOPWORDS_EXTENDED",
+    # Synonym maps
     "SYNONYM_MAP",
+    "EXCERPT_SYNONYMS",
     "QUERY_EXPANSIONS",
+    # Signal detection keywords
+    "KIDS_QUERY_KEYWORDS",
+    "KIDS_CONTENT_KEYWORDS",
     "KIDS_KEYWORDS",
+    "BEDRIJF_QUERY_KEYWORDS",
+    "BEDRIJF_CONTENT_KEYWORDS",
     "BEDRIJF_KEYWORDS",
+    "PRICING_QUERY_KEYWORDS",
+    "PRICING_CONTENT_KEYWORDS",
     "PRICING_KEYWORDS",
-    "ARRANGEMENT_KEYWORDS",
+    # Drink keywords
+    "DRINK_KEYWORDS",
+    "ALL_DRINK_KEYWORDS",
+    "DRINK_CONTENT_PATTERNS",
+    # Allergy keywords
+    "ALLERGY_QUERY_KEYWORDS",
+    "ALLERGY_CONTENT_KEYWORDS",
+    # Other signal keywords
+    "RESERVATION_QUERY_KEYWORDS",
     "OPENING_HOURS_KEYWORDS",
-    "GENERAL_KEYWORDS",
     "LOCATION_KEYWORDS",
+    "ARRANGEMENT_KEYWORDS",
+    "GENERAL_KEYWORDS",
     "MENU_KEYWORDS",
+    # Date/day constants
     "DAY_NAMES_EN_TO_NL",
     "DAYS_ORDER",
+    # Search relevance
     "IMPORTANT_SEARCH_TERMS",
 ]

@@ -30,6 +30,11 @@ from .constants import (
     LOCATION_KEYWORDS,
     MENU_KEYWORDS,
     IMPORTANT_SEARCH_TERMS,
+    # New drink/allergy constants
+    ALL_DRINK_KEYWORDS,
+    DRINK_CONTENT_PATTERNS,
+    ALLERGY_QUERY_KEYWORDS,
+    ALLERGY_CONTENT_KEYWORDS,
 )
 
 logger = logging.getLogger(__name__)
@@ -323,6 +328,30 @@ class KBSearchEngine:
         if is_racing_query and 'simracen' in title:
             score += 15
         
+
+        # DRINK-SPECIFIC BOOST
+        # When user asks about drinks (bier, wijn, etc.), boost sections containing drink info
+        query_words = set(query_lower.split())
+        is_drink_query = bool(query_words & ALL_DRINK_KEYWORDS)
+        if is_drink_query:
+            has_drink_content = any(pattern in content or pattern in title for pattern in DRINK_CONTENT_PATTERNS)
+            if has_drink_content:
+                score += 30
+                # Extra boost if title contains drink word
+                if any(drink in title for drink in ['bier', 'wijn', 'cocktail', 'drank', 'menu']):
+                    score += 15
+
+        # ALLERGY/DIET BOOST
+        # When user asks about allergies, boost sections with allergy info
+        is_allergy_query = bool(query_words & ALLERGY_QUERY_KEYWORDS)
+        if is_allergy_query:
+            has_allergy_content = any(kw in content for kw in ALLERGY_CONTENT_KEYWORDS)
+            if has_allergy_content:
+                score += 35
+                # Extra boost for sections specifically about allergies/diets
+                if any(kw in title for kw in ['allergie', 'dieet', 'vegan', 'vegetarisch', 'glutenvrij']):
+                    score += 20
+
         # Searchable index matching
         for term, section_indices in searchable.items():
             if term in expanded_query and section_index in section_indices:
