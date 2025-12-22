@@ -648,8 +648,7 @@ def extract_relevant_excerpt(
     engine = get_search_engine()
     return engine.extract_relevant_excerpt(
         content=content,
-        query=query,
-        max_length=max_length,
+        search_query=query,
         context_chars=context_chars,
         before_chars=before_chars,
     )

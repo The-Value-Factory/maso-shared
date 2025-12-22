@@ -209,6 +209,7 @@ class KnowledgeService:
         module_context = {
             'products': products or [],
             'activity_name': signals.get('detected_activity'),
+            'query': query,  # Pass query for smart excerpt extraction
             **(custom_context or {})
         }
         

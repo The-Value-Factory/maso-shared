@@ -18,6 +18,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional, Callable
 
+from .search import extract_relevant_excerpt
 from .types import KBContent, SearchResult, QuerySignals
 from .constants import DAY_NAMES_EN_TO_NL, DAYS_ORDER
 
@@ -392,7 +393,7 @@ class FAQModule(ContextModule):
 class SearchResultsModule(ContextModule):
     """Module for additional search results."""
     
-    def __init__(self, max_items: int = 3, excerpt_length: int = 800):
+    def __init__(self, max_items: int = 3, excerpt_length: int = 2000):
         self.max_items = max_items
         self.excerpt_length = excerpt_length
     
@@ -423,15 +424,28 @@ class SearchResultsModule(ContextModule):
         
         parts = ["📋 EXTRA INFORMATIE:\n\n"]
         
+        # Use ORIGINAL query from kwargs (not expanded search_query!)
+        # The expanded search_query contains synonyms that may match wrong section
+        original_query = kwargs.get('query', '')
+
         for result in other_results[:self.max_items]:
             title = result.get('title', 'Onbekend')
             content = result.get('content', '')
             
             parts.append(f"PAGINA: {title}\n")
             
-            excerpt = content[:self.excerpt_length]
-            if len(content) > self.excerpt_length:
-                excerpt += "..."
+            # Use smart excerpt extraction that finds relevant content around search terms
+            if original_query and len(content) > self.excerpt_length:
+                excerpt = extract_relevant_excerpt(
+                    content=content,
+                    query=original_query,
+                    context_chars=self.excerpt_length,
+                    before_chars=200
+                )
+            else:
+                excerpt = content[:self.excerpt_length]
+                if len(content) > self.excerpt_length:
+                    excerpt += "..."
             parts.append(f"{excerpt}\n\n")
         
         logger.info(f"✅ {self.name} module: {len(other_results[:self.max_items])} results")
