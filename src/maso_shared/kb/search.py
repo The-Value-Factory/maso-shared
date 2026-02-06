@@ -191,10 +191,25 @@ class KBSearchEngine:
             )
             
             if score > 0:
+                # ✅ FIX: Handle multiple price formats (int, float, str, list)
+                price_raw = arr.get('price', [])
+                if isinstance(price_raw, (int, float)):
+                    # Number → format with currency
+                    price_str = f"€{price_raw:.2f}".replace('.', ',')
+                elif isinstance(price_raw, str):
+                    # String → use directly
+                    price_str = price_raw
+                elif isinstance(price_raw, list) and price_raw:
+                    # List → join elements
+                    price_str = ', '.join(str(p) for p in price_raw)
+                else:
+                    # Empty or None → fallback
+                    price_str = "Prijs op aanvraag"
+                
                 arr_section: SearchResult = {
                     "type": "arrangement",
                     "title": f"Arrangement: {arr.get('name', 'Onbekend')}",
-                    "content": f"{arr.get('name', '')} - {arr.get('description', '')} - Prijs: {', '.join(arr.get('price', []))} - Duur: {arr.get('duration', '')}",
+                    "content": f"{arr.get('name', '')} - {arr.get('description', '')} - Prijs: {price_str} - Duur: {arr.get('duration', '')}",
                     "url": arr.get('source_url', ''),
                     "metadata": {
                         "prices": arr.get('price', []),
