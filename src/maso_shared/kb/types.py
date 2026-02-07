@@ -28,7 +28,7 @@ class ArrangementItem(TypedDict, total=False):
     age_restriction: Optional[str]
     group_size: Optional[str]
     activities: Optional[List[str]]
-    is_favorite: Optional[bool]
+    is_featured: Optional[bool]
 
 
 class ContentSection(TypedDict, total=False):

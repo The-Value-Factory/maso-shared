@@ -175,7 +175,7 @@ class LLMContextBuilder:
         
         # Sort: favorites first, then by name
         def sort_key(arr):
-            is_fav = arr.get('is_favorite', False)
+            is_fav = arr.get('is_featured', False)
             return (0 if is_fav else 1, arr.get('name', ''))
         
         sorted_arrangements = sorted(unique_arrangements, key=sort_key)
@@ -207,7 +207,7 @@ class LLMContextBuilder:
         """
         Build favorite arrangements module (for non-arrangement queries).
         
-        Only shows arrangements marked as is_favorite=true.
+        Only shows arrangements marked as is_featured=true.
         
         Args:
             kb_content: Knowledge base content
@@ -221,7 +221,7 @@ class LLMContextBuilder:
             return ""
         
         # Filter for favorites only
-        favorite_arrangements = [arr for arr in arrangements if arr.get('is_favorite')]
+        favorite_arrangements = [arr for arr in arrangements if arr.get('is_featured')]
         
         if not favorite_arrangements:
             return ""
