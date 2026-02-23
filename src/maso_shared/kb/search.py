@@ -136,6 +136,9 @@ class KBSearchEngine:
         # Expand query with synonyms and expansions
         expanded_query = self._expand_query(query_lower)
         
+        # Analyze query signals for content-based boosts
+        signals = self.analyze_query_signals(query_lower)
+        
         # Get content from KB
         sections = kb_content.get('content_sections', [])
         searchable = kb_content.get('searchable_content', {})
@@ -172,7 +175,8 @@ class KBSearchEngine:
                 searchable, 
                 i,
                 is_arrangement_query,
-                is_menu_query
+                is_menu_query,
+                signals
             )
             
             if score > 0:
@@ -328,13 +332,18 @@ class KBSearchEngine:
         searchable: Dict[str, List[int]],
         section_index: int,
         is_arrangement_query: bool = False,
-        is_menu_query: bool = False
+        is_menu_query: bool = False,
+        signals: QuerySignals = None
     ) -> float:
         """Score a content section based on query relevance."""
         score = 0.0
         content = section.get('content', '').lower()
         title = section.get('title', '').lower()
         url = section.get('url', '').lower()
+        
+        # Use empty signals dict if not provided
+        if signals is None:
+            signals = {}
         
         # Boost arrangement pages for arrangement queries
         if is_arrangement_query:
@@ -358,13 +367,30 @@ class KBSearchEngine:
         # When user asks about drinks (bier, wijn, etc.), boost sections containing drink info
         query_words = set(query_lower.split())
         is_drink_query = bool(query_words & ALL_DRINK_KEYWORDS)
+        
+        # 🆕 CONTENT-BASED DRINKS DETECTION
+        # Detect if THIS section is drinks-related based on title (independent of query)
+        is_drinks_content = any(pattern in title for pattern in ['drankenkaart', 'drankenmenu', 'prijslijst'])
+        
+        # Apply boost if:
+        # 1. Query asks about drinks (original logic), OR
+        # 2. Query asks about pricing AND this section is drinks content (NEW FIX for "wat kost colaatje")
         if is_drink_query:
             has_drink_content = any(pattern in content or pattern in title for pattern in DRINK_CONTENT_PATTERNS)
             if has_drink_content:
                 score += 30
+                logger.debug(f"🍺 Drink query boost: '{title}' +30 points (query mentions drinks)")
                 # Extra boost if title contains drink word
                 if any(drink in title for drink in ['bier', 'wijn', 'cocktail', 'drank', 'menu']):
                     score += 15
+        elif is_drinks_content and signals.get('pricing', False):
+            # NEW: Pricing query + drinks content = boost!
+            # This catches queries like "wat kost een colaatje" where:
+            # - pricing=True (has "kost")
+            # - drinks=False ("colaatje" not in keywords)
+            # - title="Drankenkaart.pdf" (is drinks content)
+            score += 30
+            logger.debug(f"💰🍺 Pricing + drinks content boost: '{title}' +30 points (pricing query, drinks content)")
 
         # ALLERGY/DIET BOOST
         # When user asks about allergies, boost sections with allergy info
