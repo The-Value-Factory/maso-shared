@@ -22,6 +22,7 @@ from typing import List, Dict, Set, Optional, Any, Callable
 from .types import QuerySignals
 from .constants import (
     DRINK_KEYWORDS,
+    ALL_DRINK_KEYWORDS,
     ALLERGY_QUERY_KEYWORDS,
 )
 
@@ -178,9 +179,9 @@ class QueryAnalyzer:
             w in q.lower() for w in ['eten', 'maaltijd', 'diner', 'lunch', 'hapje', 'menu', 'gerecht', 'burger', 'pizza']
         ))
         
-        # Drinks
+        # Drinks - use ALL_DRINK_KEYWORDS (flat set) not DRINK_KEYWORDS (dict keys)
         self.register_detector('drinks', lambda q: any(
-            w in q.lower() for w in DRINK_KEYWORDS
+            w in q.lower() for w in ALL_DRINK_KEYWORDS
         ))
         
         # Allergies

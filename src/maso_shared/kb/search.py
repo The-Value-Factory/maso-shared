@@ -286,13 +286,12 @@ class KBSearchEngine:
         elif is_racing_query and category != 'simracen':
             score -= 10
         
-        # Word matching
-        for word in expanded_query.split():
-            if len(word) > 2 and word not in self.stopwords:
-                if word in question:
-                    score += 15
-                if word in answer:
-                    score += 8
+        # Word matching (original + stem)
+        for word in self._get_search_words(expanded_query):
+            if word in question:
+                score += 15
+            if word in answer:
+                score += 8
         
         # Numeric queries
         if any(word in query_lower for word in ['hoeveel', 'aantal', 'hoe veel']):
@@ -363,34 +362,65 @@ class KBSearchEngine:
             score += 15
         
 
-        # DRINK-SPECIFIC BOOST
-        # When user asks about drinks (bier, wijn, etc.), boost sections containing drink info
+        # DOCUMENT CATEGORY & CONTENT-TYPE DETECTION
+        # Uses the section's 'category' field (set at upload/scrape time) + title as fallback.
+        # This makes boosting reliable regardless of what a customer names their document.
+        section_category = section.get('category', '').lower()
         query_words = set(query_lower.split())
+
+        is_drinks_content = (
+            section_category in {'menu', 'drinken', 'drinks', 'bar', 'drankenkaart', 'drankenmenu'} or
+            any(w in title for w in ['drankenkaart', 'drankenmenu', 'dranken', 'drankkaart', 'beverages'])
+        )
+        is_menu_content = (
+            section_category in {'menu', 'eten', 'menukaart', 'food'} or
+            any(w in title for w in ['menukaart', 'eten', 'foodmenu']) or
+            is_drinks_content  # een drankmenu is ook een menu
+        )
+        is_pricing_content = (
+            section_category in {'pricing', 'prijs', 'prijslijst', 'tarieven'} or
+            any(w in title for w in ['prijslijst', 'prijzen', 'tarieven', 'tarief'])
+        )
+        is_arrangement_content = (
+            section_category in {'arrangement', 'arrangementen', 'packages', 'pakketten'}
+        )
+
+        # DRINK-SPECIFIC BOOST
         is_drink_query = bool(query_words & ALL_DRINK_KEYWORDS)
-        
-        # 🆕 CONTENT-BASED DRINKS DETECTION
-        # Detect if THIS section is drinks-related based on title (independent of query)
-        is_drinks_content = any(pattern in title for pattern in ['drankenkaart', 'drankenmenu', 'prijslijst'])
-        
-        # Apply boost if:
-        # 1. Query asks about drinks (original logic), OR
-        # 2. Query asks about pricing AND this section is drinks content (NEW FIX for "wat kost colaatje")
+
         if is_drink_query:
             has_drink_content = any(pattern in content or pattern in title for pattern in DRINK_CONTENT_PATTERNS)
             if has_drink_content:
                 score += 30
                 logger.debug(f"🍺 Drink query boost: '{title}' +30 points (query mentions drinks)")
-                # Extra boost if title contains drink word
                 if any(drink in title for drink in ['bier', 'wijn', 'cocktail', 'drank', 'menu']):
                     score += 15
-        elif is_drinks_content and signals.get('pricing', False):
-            # NEW: Pricing query + drinks content = boost!
-            # This catches queries like "wat kost een colaatje" where:
-            # - pricing=True (has "kost")
-            # - drinks=False ("colaatje" not in keywords)
-            # - title="Drankenkaart.pdf" (is drinks content)
+        elif (is_drinks_content or is_menu_content) and signals.get('pricing', False):
+            # Pricing query + menu/drinks section → boost
+            # Catches: "wat kost een colaatje", "prijs van een biertje", "wat kost de kaart"
             score += 30
-            logger.debug(f"💰🍺 Pricing + drinks content boost: '{title}' +30 points (pricing query, drinks content)")
+            logger.debug(f"💰🍺 Pricing + menu/drinks content boost: '{title}' +30 points")
+        elif is_drinks_content and signals.get('food', False):
+            # Food/drink signal + drinks section (e.g. "wat kunnen we drinken?")
+            score += 20
+            logger.debug(f"🍺 Food signal + drinks content boost: '{title}' +20 points")
+
+        # MENU/FOOD BOOST
+        is_food_query = signals.get('food', False)
+        is_menu_query_signal = any(keyword in query_lower for keyword in MENU_KEYWORDS)
+        if is_menu_content and (is_food_query or is_menu_query_signal) and not is_drink_query:
+            score += 25
+            logger.debug(f"🍕 Menu content boost: '{title}' +25 points (food/menu query)")
+
+        # PRICING DOCUMENT BOOST
+        if is_pricing_content and signals.get('pricing', False):
+            score += 40
+            logger.debug(f"💰 Pricing document boost: '{title}' +40 points")
+
+        # ARRANGEMENT CONTENT BOOST (via category, supplements title-based boost above)
+        if is_arrangement_content and signals.get('arrangement', False) and not is_arrangement_query:
+            score += 80
+            logger.debug(f"🎯 Arrangement category boost: '{title}' +80 points")
 
         # ALLERGY/DIET BOOST
         # When user asks about allergies, boost sections with allergy info
@@ -409,14 +439,14 @@ class KBSearchEngine:
                 score += 10
         
         # Title word matching
-        if any(word in title for word in expanded_query.split() if word not in self.stopwords):
+        search_words = self._get_search_words(expanded_query)
+        if any(word in title for word in search_words):
             score += 8
-        
-        # Content word matching
-        for word in expanded_query.split():
-            if len(word) > 2 and word not in self.stopwords:
-                score += content.count(word) * 2
-        
+
+        # Content word matching (original + stem)
+        for word in search_words:
+            score += content.count(word) * 2
+
         # Important term matching
         for term in IMPORTANT_SEARCH_TERMS:
             if term in expanded_query:
@@ -424,9 +454,9 @@ class KBSearchEngine:
                     score += 12
                 elif term in content:
                     score += 6
-        
+
         return score
-    
+
     def _score_arrangement(
         self,
         arr: Dict[str, Any],
@@ -451,16 +481,16 @@ class KBSearchEngine:
                 score += 60
                 logger.debug(f"🎈 Kids arrangement boost: '{arr_name}' +60 points")
         
-        # Name word matching
-        if any(word in arr_name for word in expanded_query.split() if word not in self.stopwords):
+        # Name word matching (original + stem)
+        search_words = self._get_search_words(expanded_query)
+        if any(word in arr_name for word in search_words):
             score += 15
-        
-        # Content word matching
-        for word in expanded_query.split():
-            if len(word) > 2 and word not in self.stopwords:
-                count = (arr_name + arr_desc).count(word)
-                if count > 0:
-                    score += count * 3
+
+        # Content word matching (original + stem)
+        for word in search_words:
+            count = (arr_name + arr_desc).count(word)
+            if count > 0:
+                score += count * 3
         
         # Arrangement keyword matching
         arrangement_keywords = ['arrangement', 'kids', 'party', 'kinderfeest', 'verjaardag', 'deal']
@@ -470,6 +500,55 @@ class KBSearchEngine:
         
         return score
     
+    def _stem_word(self, word: str) -> str:
+        """
+        Strip Dutch diminutive suffixes to get the word stem.
+
+        Order matters: check longer suffixes first to avoid partial stripping.
+        Examples:
+            colaatje  -> cola   (atje, 4 chars)
+            biertje   -> bier   (tje, 3 chars)
+            wijntje   -> wijn   (tje, 3 chars)
+            biertjes  -> bier   (tjes, 4 chars)
+            colaatjes -> cola   (atjes, 5 chars)
+            hapje     -> hap    (je, 2 chars)
+        """
+        if word.endswith('atjes') and len(word) > 5:
+            return word[:-5]
+        if word.endswith('tjes') and len(word) > 4:
+            return word[:-4]
+        if word.endswith('jes') and len(word) > 3:
+            return word[:-3]
+        if word.endswith('atje') and len(word) > 4:
+            return word[:-4]
+        if word.endswith('tje') and len(word) > 3:
+            return word[:-3]
+        if word.endswith('je') and len(word) > 4:  # min length 5: avoid 'oje', 'aje'
+            return word[:-2]
+        return word
+
+    def _get_search_words(self, expanded_query: str) -> List[str]:
+        """
+        Get all search words from expanded query, including stems.
+
+        For each word returns both the original AND its stem (if different),
+        so scoring matches both 'colaatje' and 'cola' in content.
+        Words shorter than 3 chars and stopwords are excluded.
+        """
+        words = []
+        seen = set()
+        for word in expanded_query.split():
+            if len(word) <= 2 or word in self.stopwords:
+                continue
+            if word not in seen:
+                seen.add(word)
+                words.append(word)
+            stem = self._stem_word(word)
+            if stem != word and stem not in seen and len(stem) > 2:
+                seen.add(stem)
+                words.append(stem)
+        return words
+
     def _expand_query(self, query: str) -> str:
         """
         Expand query with synonyms and query expansions.
@@ -577,14 +656,21 @@ class KBSearchEngine:
             if len(word) > 2 and word not in STOPWORDS_EXTENDED:
                 search_terms.append(word)
                 # Add Dutch word stems (remove common diminutive suffixes)
-                if word.endswith('tje'):
-                    search_terms.append(word[:-3])  # biertje -> bier
-                elif word.endswith('je'):
-                    search_terms.append(word[:-2])  # wijntje -> wijn
+                # BELANGRIJK: langere suffixen eerst checken!
+                # 'colaatje'[-4:] = 'atje' → [:-4] = 'cola'  ✅
+                # 'colaatje'[-3:] = 'tje'  → [:-3] = 'colaa' ❌ (oude bug)
+                if word.endswith('atjes'):
+                    search_terms.append(word[:-5])  # colaatjes -> cola
                 elif word.endswith('tjes'):
                     search_terms.append(word[:-4])  # biertjes -> bier
                 elif word.endswith('jes'):
                     search_terms.append(word[:-3])  # wijntjes -> wijn
+                elif word.endswith('atje'):
+                    search_terms.append(word[:-4])  # colaatje -> cola
+                elif word.endswith('tje'):
+                    search_terms.append(word[:-3])  # biertje -> bier
+                elif word.endswith('je'):
+                    search_terms.append(word[:-2])  # hapje -> hap
         
         # Add synonyms for common drink/food terms
         expanded_terms = list(search_terms)

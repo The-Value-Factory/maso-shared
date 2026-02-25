@@ -89,6 +89,10 @@ EXCERPT_SYNONYMS = {
     'ontbijt': ['breakfast', 'ochtend'],
     'diner': ['avondeten', 'dineren', 'dinerkaart'],
     'borrel': ['borrelhapjes', 'borrelkaart', 'hapjes'],
+    'cola': ['frisdrank', 'fris', 'colaatje', 'cola light', 'zero', 'sinas'],
+    'colaatje': ['cola', 'frisdrank', 'fris'],
+    'sinas': ['frisdrank', 'fris', 'sinasje', 'sinaasappelsap'],
+    'limonade': ['limonaatje', 'fris', 'frisdrank', 'ranja'],
     'menu': ['menukaart', 'kaart', 'gerechten'],
 }
 
@@ -148,7 +152,7 @@ DRINK_KEYWORDS = {
     'bier': ['bier', 'biertje', 'biertjes', 'pils', 'pilsje', 'speciaal', 'speciaalbier', 'tap', 'tapbier', 'fust', 'ipa', 'witbier', 'blond', 'tripel', 'dubbel'],
     'wijn': ['wijn', 'wijntje', 'wijnen', 'rood', 'rode', 'wit', 'witte', 'rose', 'rosé', 'prosecco', 'champagne', 'cava', 'bubbels', 'glas wijn'],
     'cocktail': ['cocktail', 'cocktails', 'mix', 'mixdrank', 'mojito', 'martini', 'spritz', 'aperol', 'gin tonic', 'gin-tonic', 'margarita', 'cosmopolitan', 'long drink'],
-    'frisdrank': ['frisdrank', 'fris', 'cola', 'sinas', 'spa', 'water', 'mineraalwater', 'ice tea', 'icetea', 'tonic', 'bitter lemon', 'cassis', 'appelsap', 'jus', 'juice'],
+    'frisdrank': ['frisdrank', 'fris', 'cola', 'colaatje', 'colaatjes', 'sinas', 'sinasje', 'limonade', 'limonaatje', 'ranja', 'spa', 'water', 'mineraalwater', 'ice tea', 'icetea', 'tonic', 'bitter lemon', 'cassis', 'appelsap', 'jus', 'juice'],
     'koffie': ['koffie', 'espresso', 'cappuccino', 'latte', 'americano', 'flat white', 'koffiemenu'],
     'thee': ['thee', 'tea', 'theemenu', 'earl grey', 'groene thee', 'muntthee'],
     'alcohol': ['alcohol', 'drank', 'drankje', 'dranken', 'alcoholvrij', 'sterke drank', 'shot', 'shots', 'borrel', 'borrelen'],
