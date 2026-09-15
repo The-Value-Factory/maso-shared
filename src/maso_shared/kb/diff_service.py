@@ -70,10 +70,20 @@ class KBDiffService:
         )
         changes.extend(faq_changes)
         
-        # Compare sections (excluding PDFs - those are handled separately)
-        current_sections = [s for s in current_content.get('content_sections', []) if s.get('type') != 'pdf']
+        # Compare sections (excluding PDFs - those are handled separately).
+        # The diff runs on the filtered list, but apply_changes indexes into the
+        # full content_sections list, so map current_index back to the original
+        # position. Otherwise a PDF section earlier in the list shifts every
+        # MODIFIED/REMOVED onto the wrong section.
+        current_section_pairs = [
+            (i, s) for i, s in enumerate(current_content.get('content_sections', [])) if s.get('type') != 'pdf'
+        ]
+        current_sections = [s for _, s in current_section_pairs]
         scraped_sections = [s for s in scraped_content.get('content_sections', []) if s.get('type') != 'pdf']
         section_changes = self._diff_sections(current_sections, scraped_sections)
+        for change in section_changes:
+            if change.get('current_index') is not None:
+                change['current_index'] = current_section_pairs[change['current_index']][0]
         changes.extend(section_changes)
         
         # Compare PDF documents
@@ -141,6 +151,10 @@ class KBDiffService:
             change = change_lookup[change_id]
             changes_by_action[change['action']].append(change)
         
+        # Removals must run from the highest index down, otherwise each pop()
+        # shifts the indices of the removals that follow it.
+        changes_by_action['REMOVED'].sort(key=lambda c: c.get('current_index') or 0, reverse=True)
+
         # Apply in safe order
         for action in ['MODIFIED', 'ADDED', 'REMOVED']:
             for change in changes_by_action[action]:

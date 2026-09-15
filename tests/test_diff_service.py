@@ -180,3 +180,60 @@ class TestChangeIdGeneration:
         ids = [c['change_id'] for c in result['changes']]
         
         assert len(ids) == len(set(ids))  # All unique
+
+
+class TestApplyIndexStability:
+    """Regression tests: apply_changes must hit the item the diff pointed at."""
+
+    def test_section_index_survives_pdf_sections_in_list(self, diff_service):
+        # A PDF section sits *before* the page sections. The diff skips PDFs,
+        # so without remapping index 0 would point at the PDF, not at /over-ons.
+        current = {
+            'content_sections': [
+                {'title': 'PDF: menu.pdf', 'url': 'https://x.nl/menu.pdf', 'content': 'menu', 'type': 'pdf'},
+                {'title': 'Over ons', 'url': 'https://x.nl/over-ons', 'content': 'oud', 'type': 'page'},
+                {'title': 'Contact', 'url': 'https://x.nl/contact', 'content': 'bel ons', 'type': 'page'},
+            ],
+        }
+        scraped = {
+            'content_sections': [
+                {'title': 'PDF: menu.pdf', 'url': 'https://x.nl/menu.pdf', 'content': 'menu', 'type': 'pdf'},
+                {'title': 'Over ons', 'url': 'https://x.nl/over-ons', 'content': 'nieuw', 'type': 'page'},
+            ],
+        }
+        result = diff_service.generate_changes(current, scraped)
+        section_changes = [c for c in result['changes'] if c['type'] == 'section']
+        modified = next(c for c in section_changes if c['action'] == 'MODIFIED')
+        removed = next(c for c in section_changes if c['action'] == 'REMOVED')
+        assert modified['current_index'] == 1
+        assert removed['current_index'] == 2
+
+        new_content = diff_service.apply_changes(current, [modified['change_id']], result['changes'])
+        assert new_content['content_sections'][0]['type'] == 'pdf'
+        assert new_content['content_sections'][1]['content'] == 'nieuw'
+        assert len(new_content['content_sections']) == 3
+
+        new_content = diff_service.apply_changes(current, [removed['change_id']], result['changes'])
+        assert [s['url'] for s in new_content['content_sections']] == [
+            'https://x.nl/menu.pdf',
+            'https://x.nl/over-ons',
+        ]
+
+    def test_multiple_removals_do_not_shift(self, diff_service):
+        current = {
+            'faqs': [
+                {'question': 'A?', 'answer': 'a'},
+                {'question': 'B?', 'answer': 'b'},
+                {'question': 'C?', 'answer': 'c'},
+                {'question': 'D?', 'answer': 'd'},
+            ],
+        }
+        scraped = {'faqs': [{'question': 'D?', 'answer': 'd'}]}
+        result = diff_service.generate_changes(current, scraped)
+        removed = [c for c in result['changes'] if c['type'] == 'faq' and c['action'] == 'REMOVED']
+        assert len(removed) == 3
+
+        # Pass the ids in ascending index order, the worst case for pop()
+        ids = [c['change_id'] for c in sorted(removed, key=lambda c: c['current_index'])]
+        new_content = diff_service.apply_changes(current, ids, result['changes'])
+        assert [f['question'] for f in new_content['faqs']] == ['D?']
